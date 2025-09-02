@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, createContext, useContext, ReactNode } from 'react'
 
 export type NotificationType = 'success' | 'error' | 'info' | 'warning'
 
@@ -8,6 +8,62 @@ export interface Notification {
   title: string
   message: string
   duration?: number
+}
+
+// Create notification context
+interface NotificationContextType {
+  notifications: Notification[]
+  addNotification: (notification: Omit<Notification, 'id'>) => string
+  removeNotification: (id: string) => void
+  clearAll: () => void
+}
+
+const NotificationContext = createContext<NotificationContextType | undefined>(undefined)
+
+// Notification provider component
+interface NotificationProviderProps {
+  children: ReactNode
+}
+
+export function NotificationProvider({ children }: NotificationProviderProps) {
+  const [notifications, setNotifications] = useState<Notification[]>([])
+
+  const addNotification = (notification: Omit<Notification, 'id'>) => {
+    const id = Math.random().toString(36).substr(2, 9)
+    const newNotification = { ...notification, id }
+    setNotifications(prev => [...prev, newNotification])
+    return id
+  }
+
+  const removeNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id))
+  }
+
+  const clearAll = () => {
+    setNotifications([])
+  }
+
+  const value: NotificationContextType = {
+    notifications,
+    addNotification,
+    removeNotification,
+    clearAll
+  }
+
+  return (
+    <NotificationContext.Provider value={value}>
+      {children}
+    </NotificationContext.Provider>
+  )
+}
+
+// Hook for using notifications
+export function useNotifications() {
+  const context = useContext(NotificationContext)
+  if (context === undefined) {
+    throw new Error('useNotifications must be used within a NotificationProvider')
+  }
+  return context
 }
 
 interface NotificationSystemProps {
@@ -123,31 +179,4 @@ function NotificationItem({ notification, onRemove }: NotificationItemProps) {
       </div>
     </div>
   )
-}
-
-// Hook for managing notifications
-export function useNotifications() {
-  const [notifications, setNotifications] = useState<Notification[]>([])
-
-  const addNotification = (notification: Omit<Notification, 'id'>) => {
-    const id = Math.random().toString(36).substr(2, 9)
-    const newNotification = { ...notification, id }
-    setNotifications(prev => [...prev, newNotification])
-    return id
-  }
-
-  const removeNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id))
-  }
-
-  const clearAll = () => {
-    setNotifications([])
-  }
-
-  return {
-    notifications,
-    addNotification,
-    removeNotification,
-    clearAll
-  }
 }
